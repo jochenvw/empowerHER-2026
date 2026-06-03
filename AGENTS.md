@@ -1,10 +1,17 @@
 # Coding agent rules
 
 - Keep the repository simple and workshop-oriented.
-- Put each agent in its own file under `src/agent_inclusion_lab/agents`.
+- Use Microsoft Agent Framework native concepts (`Agent`, skills, workflow, eval APIs).
+- Put each agent in its own folder under `src/agent_inclusion_lab/agents/<agent_name>/`.
+- Each agent folder must contain:
+  - `system_prompt.md` (required)
+  - `skills.md` (when skills are used)
+  - `tools.py` (when helper tools are used)
+  - `__init__.py` (agent/plugin runtime code)
 - Put reusable tools/helpers under `src/agent_inclusion_lab/skills`.
 - Put orchestration logic only in `src/agent_inclusion_lab/workflow.py`.
 - Put eval logic only in `src/agent_inclusion_lab/evals`.
+- Implement bespoke evaluations with Agent Framework evaluation primitives.
 - Do not put secrets in code.
 - Do not add large dependencies unless necessary.
 - Prefer idiomatic, typed Python with small functions.
@@ -12,4 +19,4 @@
 - Do not "fix bias" with only one hardcoded string replacement.
 - Prefer structured findings over vague prose.
 - Keep outputs understandable for beginners.
-- For new agent variants, add a new file in `src/agent_inclusion_lab/agents` that exports `AGENT_PLUGIN`; avoid editing shared workflow logic unless required.
+- For new agent variants, add a new `src/agent_inclusion_lab/agents/<agent_name>/__init__.py` exporting `AGENT_PLUGIN`; avoid editing shared workflow logic unless required.

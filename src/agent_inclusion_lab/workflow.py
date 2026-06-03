@@ -8,23 +8,24 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import agent_framework as af
+
+from agent_inclusion_lab.agents.prompt_loader import build_agent_instructions
+from agent_inclusion_lab.evals.inclusion_eval import evaluate_text_async
+from agent_inclusion_lab.model_client import create_framework_chat_client
+from agent_inclusion_lab.skills.job_post_reader import read_job_post
+
 warnings.filterwarnings(
     "ignore",
     message=".*experimental.*",
     module="agent_framework.*",
 )
 
-import agent_framework as af
-
-from agent_inclusion_lab.agents.prompt_loader import build_agent_instructions
-from agent_inclusion_lab.evals.inclusion_eval import evaluate_text
-from agent_inclusion_lab.model_client import create_framework_chat_client
-from agent_inclusion_lab.skills.job_post_reader import read_job_post
-_REVIEWER_IDS = {
+_REVIEWER_IDS = (
+    "reviewer.equal_access",
     "reviewer.gender_eligibility",
     "reviewer.leadership_framing",
-    "reviewer.equal_access",
-}
+)
 
 
 @dataclass(frozen=True)
@@ -45,7 +46,7 @@ def _selected_review_agent_ids() -> list[str]:
         valid = [item for item in values if item in _REVIEWER_IDS]
         if valid:
             return valid
-    return sorted(_REVIEWER_IDS)
+    return list(_REVIEWER_IDS)
 
 
 def _extract_json_payload(text: str) -> dict[str, Any]:
@@ -77,17 +78,6 @@ async def run_review_panel(
     client = create_framework_chat_client()
     review_panel: list[dict[str, Any]] = []
     for reviewer_id in _selected_review_agent_ids():
-        if reviewer_id == "reviewer.default":
-            review_panel.append(
-                {
-                    "reviewer": "reviewer.default",
-                    "summary": "No improvements suggested.",
-                    "suggestions": [],
-                    "evidence_spans": [],
-                }
-            )
-            continue
-
         reviewer = af.Agent(
             id=reviewer_id,
             name=reviewer_id,
@@ -101,23 +91,20 @@ async def run_review_panel(
             f"Inclusive principles context:\n{inclusive_principles}"
         )
         parsed = _extract_json_payload(_coerce_text(response))
-        summary = str(parsed.get("summary", "")).strip()
-        suggestions = [
-            str(item).strip()
-            for item in parsed.get("suggestions", [])
-            if str(item).strip()
-        ]
-        evidence_spans = [
-            str(item).strip()
-            for item in parsed.get("evidence_spans", [])
-            if str(item).strip()
-        ]
         review_panel.append(
             {
                 "reviewer": reviewer_id,
-                "summary": summary,
-                "suggestions": suggestions,
-                "evidence_spans": evidence_spans,
+                "summary": str(parsed.get("summary", "")).strip(),
+                "suggestions": [
+                    str(item).strip()
+                    for item in parsed.get("suggestions", [])
+                    if str(item).strip()
+                ],
+                "evidence_spans": [
+                    str(item).strip()
+                    for item in parsed.get("evidence_spans", [])
+                    if str(item).strip()
+                ],
             }
         )
     return review_panel
@@ -154,9 +141,7 @@ async def run_editor_agent(
         if str(item).strip()
     ]
     improved = str(parsed.get("improved_job_posting", "")).strip()
-    if not bool(parsed.get("change_required", False)):
-        improved = baseline_output
-    if not improved:
+    if not bool(parsed.get("change_required", False)) or not improved:
         improved = baseline_output
     if not feedback_summary:
         feedback_summary = [
@@ -168,7 +153,8 @@ async def run_editor_agent(
 
 
 async def run_inclusion_workflow_async(
-    job_post_path: str | Path, inclusive_principles: str
+    job_post_path: str | Path,
+    inclusive_principles: str,
 ) -> WorkflowResult:
     path = str(job_post_path)
 
@@ -193,15 +179,13 @@ async def run_inclusion_workflow_async(
         }
 
     with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore",
-            message=".*FUNCTIONAL_WORKFLOWS.*",
-        )
+        warnings.filterwarnings("ignore", message=".*FUNCTIONAL_WORKFLOWS.*")
         workflow = af.FunctionalWorkflow(
             _workflow_impl,
             name="inclusion-workflow",
             description="Reader skill -> review panel agents -> editor agent.",
         )
+
     run_result = await workflow.run({"job_post_path": path})
     outputs = run_result.get_outputs()
     if not outputs:
@@ -215,8 +199,8 @@ async def run_inclusion_workflow_async(
     review_panel = list(state["review_panel"])
     feedback_summary = list(state["feedback_summary"])
 
-    baseline_eval = evaluate_text(baseline_output)
-    rewritten_eval = evaluate_text(rewritten_output)
+    baseline_eval = await evaluate_text_async(baseline_output)
+    rewritten_eval = await evaluate_text_async(rewritten_output)
     return WorkflowResult(
         job_post_path=path,
         baseline_output=baseline_output,

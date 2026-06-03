@@ -14,4 +14,3 @@ class AgentPlugin:
     stage: AgentStage
     description: str
     runner: AgentRunner
-

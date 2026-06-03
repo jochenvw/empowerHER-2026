@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Sequence
+
+import agent_framework as af
 
 from agent_inclusion_lab.model_client import generate_text
 
@@ -78,14 +81,138 @@ _EVAL_SPECS: tuple[EvalSpec, ...] = (
 )
 
 
+class InclusionJudgeEvaluator:
+    """Native Agent Framework evaluator provider for bespoke inclusion checks."""
+
+    name = "InclusionJudge"
+
+    async def evaluate(
+        self,
+        items: Sequence[af.EvalItem],
+        *,
+        eval_name: str = "Inclusion Eval",
+    ) -> af.EvalResults:
+        passed = 0
+        failed = 0
+        item_results: list[af.EvalItemResult] = []
+        per_evaluator: dict[str, dict[str, int]] = {
+            spec.eval_name: {"passed": 0, "failed": 0, "errored": 0}
+            for spec in _EVAL_SPECS
+        }
+
+        for index, item in enumerate(items):
+            judged = [_judge_single_eval(spec=spec, text=item.response) for spec in _EVAL_SPECS]
+            overall_score = round(sum(result["score"] for result in judged) / len(judged), 2)
+            overall_pass = all(result["pass"] for result in judged)
+            status = "pass" if overall_pass else "fail"
+            if overall_pass:
+                passed += 1
+            else:
+                failed += 1
+
+            scores: list[af.EvalScoreResult] = []
+            for result in judged:
+                metric_name = str(result["eval_name"])
+                metric_pass = bool(result["pass"])
+                if metric_pass:
+                    per_evaluator[metric_name]["passed"] += 1
+                else:
+                    per_evaluator[metric_name]["failed"] += 1
+                scores.append(
+                    af.EvalScoreResult(
+                        name=metric_name,
+                        score=float(result["score"]),
+                        passed=metric_pass,
+                        sample={
+                            "rationale": result["rationale"],
+                            "evidence_spans": result["evidence_spans"],
+                            "improvement_advice": result["improvement_advice"],
+                        },
+                    )
+                )
+
+            item_results.append(
+                af.EvalItemResult(
+                    item_id=str(index),
+                    status=status,
+                    scores=scores,
+                    input_text=item.query,
+                    output_text=item.response,
+                    metadata={
+                        "overall_score": overall_score,
+                        "overall_pass": overall_pass,
+                        "evals": judged,
+                    },
+                )
+            )
+
+        return af.EvalResults(
+            provider=self.name,
+            eval_id="inclusion-judge-v1",
+            run_id=eval_name,
+            status="completed",
+            result_counts={"passed": passed, "failed": failed, "errored": 0},
+            per_evaluator=per_evaluator,
+            items=item_results,
+            error=None,
+        )
+
+
 def evaluate_text(text: str) -> dict[str, Any]:
-    results = [_judge_single_eval(spec=spec, text=text) for spec in _EVAL_SPECS]
-    overall_score = round(sum(item["score"] for item in results) / len(results), 2)
-    overall_pass = all(item["pass"] for item in results)
+    return asyncio.run(evaluate_text_async(text))
+
+
+async def evaluate_text_async(text: str) -> dict[str, Any]:
+    response = af.AgentResponse(
+        messages=[af.Message("assistant", [text])],
+        agent_id="inclusion.eval.target",
+    )
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*\\[EVALS\\].*")
+        results = await af.evaluate_agent(
+            responses=response,
+            queries="Evaluate this job posting text for inclusive language quality.",
+            evaluators=InclusionJudgeEvaluator(),
+            eval_name="Inclusion Judge",
+        )
+
+    if not results:
+        raise RuntimeError("No evaluation results were produced.")
+    if not results[0].items:
+        raise RuntimeError("Evaluation result did not include item-level outputs.")
+
+    item = results[0].items[0]
+    metadata = item.metadata or {}
+    evals = metadata.get("evals")
+    if not isinstance(evals, list):
+        raise RuntimeError("Evaluation metadata was missing eval details.")
+
+    parsed_evals: list[dict[str, Any]] = []
+    for result in evals:
+        parsed_evals.append(
+            {
+                "eval_name": str(result.get("eval_name", "")),
+                "score": int(result.get("score", 1)),
+                "pass": bool(result.get("pass", False)),
+                "rationale": str(result.get("rationale", "")).strip() or "No rationale returned.",
+                "evidence_spans": [
+                    str(span).strip()
+                    for span in result.get("evidence_spans", [])
+                    if str(span).strip()
+                ][:6],
+                "improvement_advice": (
+                    str(result.get("improvement_advice", "")).strip()
+                    or "Revise wording toward neutral, competency-based criteria."
+                ),
+            }
+        )
+
     return {
-        "overall_score": overall_score,
-        "overall_pass": overall_pass,
-        "evals": results,
+        "overall_score": float(metadata.get("overall_score", 0.0)),
+        "overall_pass": bool(metadata.get("overall_pass", False)),
+        "evals": parsed_evals,
     }
 
 
@@ -104,7 +231,11 @@ def _judge_single_eval(spec: EvalSpec, text: str) -> dict[str, Any]:
     rationale = str(parsed.get("rationale", "")).strip()
     advice = str(parsed.get("improvement_advice", "")).strip()
     evidence = parsed.get("evidence_spans", [])
-    evidence_spans = [str(item).strip() for item in evidence if str(item).strip()] if isinstance(evidence, list) else []
+    evidence_spans = (
+        [str(item).strip() for item in evidence if str(item).strip()]
+        if isinstance(evidence, list)
+        else []
+    )
 
     return {
         "eval_name": spec.eval_name,
@@ -164,4 +295,3 @@ def _parse_judge_json(raw: str) -> dict[str, Any]:
         if isinstance(parsed, dict):
             return parsed
     raise RuntimeError("LLM judge response was not valid JSON.")
-

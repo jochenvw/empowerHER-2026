@@ -10,4 +10,3 @@ def test_registry_discovers_default_stages() -> None:
     assert resolve_agent("draft").agent_id == "baseline.default"
     assert resolve_agent("review").agent_id == "reviewer.default"
     assert resolve_agent("rewrite").agent_id == "rewrite.default"
-

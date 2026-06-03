@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import warnings
 
+from agent_framework.openai import OpenAIChatClient
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import OpenAI
 
@@ -13,22 +14,17 @@ warnings.filterwarnings(
     module="agent_framework.*",
 )
 
-from agent_framework.openai import OpenAIChatClient
-
 
 def generate_text(prompt: str) -> str:
     settings = get_settings()
-    return _call_foundry_model(prompt, settings)
-
-
-def _call_foundry_model(prompt: str, settings: Settings) -> str:
     deployment = settings.foundry_model_deployment or ""
     if not deployment:
         raise RuntimeError("FOUNDRY_MODEL_DEPLOYMENT is required.")
 
-    base_url = _resolve_openai_base_url(settings)
-    client = OpenAI(base_url=base_url, api_key=_resolve_api_key(settings))
-
+    client = OpenAI(
+        base_url=_resolve_openai_base_url(settings),
+        api_key=_resolve_api_key(settings),
+    )
     response = client.chat.completions.create(
         model=deployment,
         messages=[
@@ -41,6 +37,7 @@ def _call_foundry_model(prompt: str, settings: Settings) -> str:
 
     if not response.choices:
         raise RuntimeError("Model response did not contain any choices.")
+
     message = response.choices[0].message
     content = message.content
     if isinstance(content, str) and content.strip():
@@ -48,11 +45,17 @@ def _call_foundry_model(prompt: str, settings: Settings) -> str:
     if isinstance(content, list):
         parts: list[str] = []
         for item in content:
-            text = getattr(item, "text", None)
+            if isinstance(item, dict):
+                text = item.get("text")
+            else:
+                text = getattr(item, "text", None)
             if isinstance(text, str):
                 parts.append(text)
         if parts:
             return "\n".join(parts).strip()
+    refusal = getattr(message, "refusal", None)
+    if isinstance(refusal, str) and refusal.strip():
+        return refusal.strip()
     raise RuntimeError("Model response did not contain text content.")
 
 
@@ -89,8 +92,5 @@ def _resolve_openai_base_url(settings: Settings) -> str:
         )
 
     marker = "/api/projects/"
-    if marker in configured_endpoint:
-        host_root = configured_endpoint.split(marker, 1)[0]
-    else:
-        host_root = configured_endpoint
+    host_root = configured_endpoint.split(marker, 1)[0] if marker in configured_endpoint else configured_endpoint
     return f"{host_root}/openai/v1"

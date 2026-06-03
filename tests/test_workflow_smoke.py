@@ -32,7 +32,7 @@ def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
         _ = inclusive_principles
         return (["No improvements suggested."], baseline_output)
 
-    def fake_eval(text: str) -> dict[str, object]:
+    async def fake_eval_async(text: str) -> dict[str, object]:
         score = 1 if "gentleman" in text.lower() else 5
         return {
             "overall_score": float(score),
@@ -51,7 +51,7 @@ def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
 
     monkeypatch.setattr(workflow, "run_review_panel", fake_run_review_panel)
     monkeypatch.setattr(workflow, "run_editor_agent", fake_run_editor_agent)
-    monkeypatch.setattr(workflow, "evaluate_text", fake_eval)
+    monkeypatch.setattr(workflow, "evaluate_text_async", fake_eval_async)
 
     root = Path(__file__).resolve().parents[1]
     legacy_path = root / "data" / "legacy" / "hiring_guidelines_legacy.md"
