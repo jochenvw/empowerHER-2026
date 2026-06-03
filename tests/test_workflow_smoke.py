@@ -1,52 +1,37 @@
 from __future__ import annotations
 
-import os
-import subprocess
-import sys
 from pathlib import Path
 
+from agent_inclusion_lab import workflow
 from agent_inclusion_lab.skills.document_loader import load_text
 from agent_inclusion_lab.workflow import run_inclusion_workflow
 
 
-def test_workflow_smoke_dry_run(monkeypatch) -> None:
-    monkeypatch.setenv("DRY_RUN", "true")
-    monkeypatch.delenv("FOUNDRY_ENDPOINT", raising=False)
-    monkeypatch.delenv("FOUNDRY_API_KEY", raising=False)
-    monkeypatch.delenv("FOUNDRY_MODEL_DEPLOYMENT", raising=False)
-    monkeypatch.delenv("FOUNDRY_PROJECT_ENDPOINT", raising=False)
+def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
+    def fake_eval(text: str) -> dict[str, object]:
+        score = 1 if "gentleman" in text.lower() else 5
+        return {
+            "overall_score": float(score),
+            "overall_pass": score >= 4,
+            "evals": [
+                {
+                    "eval_name": "Gender Eligibility Bias",
+                    "score": score,
+                    "pass": score >= 4,
+                    "rationale": "mock",
+                    "evidence_spans": [],
+                    "improvement_advice": "mock",
+                }
+            ],
+        }
+
+    monkeypatch.setattr(workflow, "evaluate_text", fake_eval)
 
     root = Path(__file__).resolve().parents[1]
     legacy = load_text(root / "data" / "legacy" / "hiring_guidelines_legacy.md")
     clean = load_text(root / "data" / "clean" / "inclusive_hiring_principles.md")
 
     result = run_inclusion_workflow(legacy, clean)
-    assert result.baseline_eval["score"] < result.rewritten_eval["score"]
-
-
-def test_scripts_execute_in_dry_run() -> None:
-    root = Path(__file__).resolve().parents[1]
-    env = dict(os.environ)
-    env["DRY_RUN"] = "true"
-    env["PYTHONPATH"] = str(root / "src")
-
-    baseline = subprocess.run(
-        [sys.executable, str(root / "scripts" / "run_baseline.py")],
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    reviewed = subprocess.run(
-        [sys.executable, str(root / "scripts" / "run_reviewed.py")],
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    assert baseline.returncode == 0, baseline.stderr
-    assert reviewed.returncode == 0, reviewed.stderr
-    assert "score=" in baseline.stdout
-    assert "before=" in reviewed.stdout
-
+    assert result.baseline_output == legacy.strip()
+    assert result.rewritten_output == result.baseline_output
+    assert result.baseline_eval["overall_score"] == result.rewritten_eval["overall_score"]

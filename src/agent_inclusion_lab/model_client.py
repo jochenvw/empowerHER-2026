@@ -1,56 +1,74 @@
 from __future__ import annotations
 
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from openai import OpenAI
+
 from .config import Settings, get_settings
-
-_DRY_BASELINE_OUTPUT = """# Senior Engineering Manager
-
-## Job description
-We are seeking a strong, decisive leader who can command the room and drive aggressive execution.
-The ideal candidate is visible in the office, always available for leadership escalations, and a natural leader who fits our culture.
-
-## Interview rubric
-- Executive presence and dominant leadership style
-- Culture fit with existing management team
-- Ability to stay available outside normal hours
-- Track record from high-potential, elite programs
-"""
-
-_DRY_REWRITE_OUTPUT = """# Senior Engineering Manager
-
-## Job description
-We are hiring an Engineering Manager to lead teams through clear prioritization, coaching, and delivery outcomes.
-Candidates can succeed in hybrid, remote, or office-based collaboration models. We value inclusive leadership, reliable decision-making, and measurable impact.
-
-## Interview rubric
-- Evidence of coaching, feedback quality, and team growth outcomes
-- Decision-making using data, tradeoffs, and stakeholder communication
-- Collaboration across distributed teams and diverse working styles
-- Structured examples of delivery impact and role-relevant competencies
-"""
 
 
 def generate_text(prompt: str) -> str:
     settings = get_settings()
-    if settings.dry_run:
-        return _dry_run_text(prompt)
     return _call_foundry_model(prompt, settings)
 
 
-def _dry_run_text(prompt: str) -> str:
-    prompt_lower = prompt.lower()
-    if "rewrite" in prompt_lower or "inclusive principles" in prompt_lower:
-        return _DRY_REWRITE_OUTPUT
-    return _DRY_BASELINE_OUTPUT
-
-
 def _call_foundry_model(prompt: str, settings: Settings) -> str:
-    # TODO: Replace this with Microsoft Agent Framework + Foundry model invocation.
-    # This placeholder keeps the repository workshop-ready while DRY_RUN mode
-    # remains fully functional without credentials.
-    raise NotImplementedError(
-        "Foundry model adapter is not implemented in this scaffold. "
-        "Use DRY_RUN=true for deterministic workshop execution. "
-        f"Configured endpoint: {settings.foundry_endpoint!r}, "
-        f"deployment: {settings.foundry_model_deployment!r}."
+    deployment = settings.foundry_model_deployment or ""
+    if not deployment:
+        raise RuntimeError("FOUNDRY_MODEL_DEPLOYMENT is required.")
+
+    base_url = _resolve_openai_base_url(settings)
+    client = OpenAI(base_url=base_url, api_key=_resolve_api_key(settings))
+
+    response = client.chat.completions.create(
+        model=deployment,
+        messages=[
+            {"role": "system", "content": "You are a concise, professional writing assistant."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.2,
+        max_completion_tokens=900,
     )
 
+    if not response.choices:
+        raise RuntimeError("Model response did not contain any choices.")
+    message = response.choices[0].message
+    content = message.content
+    if isinstance(content, str) and content.strip():
+        return content.strip()
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            text = getattr(item, "text", None)
+            if isinstance(text, str):
+                parts.append(text)
+        if parts:
+            return "\n".join(parts).strip()
+    raise RuntimeError("Model response did not contain text content.")
+
+
+def _resolve_api_key(settings: Settings):
+    if settings.foundry_api_key:
+        return settings.foundry_api_key
+    return get_bearer_token_provider(
+        DefaultAzureCredential(), "https://ai.azure.com/.default"
+    )
+
+
+def _resolve_openai_base_url(settings: Settings) -> str:
+    if settings.foundry_openai_endpoint:
+        return settings.foundry_openai_endpoint.rstrip("/")
+
+    configured_endpoint = (
+        settings.foundry_project_endpoint or settings.foundry_endpoint or ""
+    ).rstrip("/")
+    if not configured_endpoint:
+        raise RuntimeError(
+            "FOUNDRY_PROJECT_ENDPOINT, FOUNDRY_ENDPOINT, or FOUNDRY_OPENAI_ENDPOINT is required."
+        )
+
+    marker = "/api/projects/"
+    if marker in configured_endpoint:
+        host_root = configured_endpoint.split(marker, 1)[0]
+    else:
+        host_root = configured_endpoint
+    return f"{host_root}/openai/v1"

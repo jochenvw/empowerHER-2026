@@ -8,11 +8,9 @@ from agent_inclusion_lab.agents.contracts import AgentStage
 from agent_inclusion_lab.agents.registry import resolve_agent
 from agent_inclusion_lab.evals.inclusion_eval import evaluate_text
 
-_STAGES: tuple[AgentStage, ...] = ("draft", "review", "rewrite")
+_STAGES: tuple[AgentStage, ...] = ("draft",)
 _SELECTION_ENV_BY_STAGE: dict[AgentStage, str] = {
     "draft": "INCLUSION_DRAFT_AGENT",
-    "review": "INCLUSION_REVIEW_AGENT",
-    "rewrite": "INCLUSION_REWRITE_AGENT",
 }
 
 
@@ -51,11 +49,11 @@ def run_inclusion_workflow(legacy_guidance: str, inclusive_principles: str) -> W
         state.update(updates)
 
     baseline_output = str(state["baseline_output"])
-    review = dict(state["review"])
-    rewritten_output = str(state["rewritten_output"])
+    review: dict[str, Any] = {}
+    rewritten_output = baseline_output
 
     baseline_eval = evaluate_text(baseline_output)
-    rewritten_eval = evaluate_text(rewritten_output)
+    rewritten_eval = baseline_eval
     return WorkflowResult(
         baseline_output=baseline_output,
         review=review,

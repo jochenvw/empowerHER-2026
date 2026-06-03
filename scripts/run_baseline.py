@@ -19,10 +19,16 @@ def main() -> None:
     print(baseline_output)
     print("\n=== Inclusion score ===")
     print(
-        f"score={baseline_eval['score']} recommendation={baseline_eval['recommendation']}"
+        f"overall_score={baseline_eval['overall_score']} "
+        f"overall_pass={baseline_eval['overall_pass']}"
     )
+    print("\n=== LLM judge evals ===")
+    for item in baseline_eval["evals"]:
+        print(
+            f"- {item['eval_name']}: score={item['score']} pass={item['pass']} "
+            f"rationale={item['rationale']}"
+        )
 
 
 if __name__ == "__main__":
     main()
-

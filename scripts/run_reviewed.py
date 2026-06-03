@@ -19,13 +19,18 @@ def main() -> None:
     print("=== Baseline output ===")
     print(result.baseline_output)
     print("\n=== Rewritten output ===")
+    print("(not available on main; remediation agents live on reference implementation branch)")
     print(result.rewritten_output)
     print("\n=== Scores ===")
     print(
-        f"before={result.baseline_eval['score']} after={result.rewritten_eval['score']}"
+        f"before={result.baseline_eval['overall_score']} "
+        f"after={result.rewritten_eval['overall_score']}"
+    )
+    print(
+        f"before_pass={result.baseline_eval['overall_pass']} "
+        f"after_pass={result.rewritten_eval['overall_pass']}"
     )
 
 
 if __name__ == "__main__":
     main()
-

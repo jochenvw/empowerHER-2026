@@ -3,7 +3,16 @@ from __future__ import annotations
 import re
 from typing import Any
 
-GENDERED_TERMS = ["he", "him", "his", "manpower"]
+GENDERED_TERMS = [
+    "he",
+    "him",
+    "his",
+    "manpower",
+    "salesmen",
+    "office girls",
+    "gentlemen",
+    "married gentleman",
+]
 RISK_PHRASES = [
     "culture fit",
     "aggressive",
@@ -14,6 +23,15 @@ RISK_PHRASES = [
     "visible in the office",
     "young and energetic",
     "native speaker",
+    "strong, dependable man",
+    "between 30 and 45",
+    "firm handshake",
+    "command respect",
+    "traditional corporate environment",
+    "clean-cut",
+    "family obligations interfering",
+    "ambitious man",
+    "typed résumé",
 ]
 VAGUE_TERMS = ["executive presence", "rockstar", "high potential", "natural leader"]
 
@@ -62,4 +80,3 @@ def analyze_bias(text: str) -> dict[str, Any]:
             "vague_criteria_hits": sum(item["count"] for item in vague),
         },
     }
-

@@ -8,11 +8,12 @@ from agent_inclusion_lab.evals.inclusion_eval import evaluate_text
 
 def run_inclusion_reviewer(text: str) -> dict[str, Any]:
     evaluation = evaluate_text(text)
+    evals = evaluation["evals"]
     return {
-        "score": evaluation["score"],
-        "findings": evaluation["findings"],
-        "flagged_terms": evaluation["flagged_terms"],
-        "recommendation": evaluation["recommendation"],
+        "overall_score": evaluation["overall_score"],
+        "overall_pass": evaluation["overall_pass"],
+        "evals": evals,
+        "findings": [f"{item['eval_name']}: {item['rationale']}" for item in evals],
     }
 
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 from agent_inclusion_lab.agents.contracts import AgentPlugin
-from agent_inclusion_lab.model_client import generate_text
 
 
 def run_rewrite_agent(
@@ -11,14 +10,7 @@ def run_rewrite_agent(
     reviewer_findings: dict[str, Any],
     inclusive_principles: str,
 ) -> str:
-    prompt = (
-        "Rewrite the baseline hiring content to improve inclusion.\n\n"
-        "Use reviewer findings and inclusive principles.\n\n"
-        f"Reviewer findings:\n{reviewer_findings}\n\n"
-        f"Inclusive principles:\n{inclusive_principles}\n\n"
-        f"Baseline output:\n{baseline_output}"
-    )
-    return generate_text(prompt)
+    return baseline_output
 
 
 def _run_plugin(state: dict[str, Any]) -> dict[str, Any]:
@@ -36,6 +28,6 @@ def _run_plugin(state: dict[str, Any]) -> dict[str, Any]:
 AGENT_PLUGIN = AgentPlugin(
     agent_id="rewrite.default",
     stage="rewrite",
-    description="Rewrites baseline content using reviewer findings and clean principles.",
+    description="Pass-through placeholder for future text improvement agents.",
     runner=_run_plugin,
 )

@@ -7,15 +7,8 @@ import sys
 from pathlib import Path
 
 
-def _is_true(value: str | None) -> bool:
-    if value is None:
-        return False
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
 def run_checks() -> list[tuple[str, bool, str]]:
     root = Path(__file__).resolve().parents[1]
-    dry_run = _is_true(os.getenv("DRY_RUN", "true"))
 
     checks: list[tuple[str, bool, str]] = []
     checks.append(
@@ -54,23 +47,36 @@ def run_checks() -> list[tuple[str, bool, str]]:
     except Exception as exc:
         checks.append(("package_import", False, str(exc)))
 
-    if dry_run:
-        checks.append(("foundry_config", True, "DRY_RUN=true (credentials not required)"))
-    else:
-        required = [
-            "FOUNDRY_ENDPOINT",
-            "FOUNDRY_API_KEY",
-            "FOUNDRY_MODEL_DEPLOYMENT",
-            "FOUNDRY_PROJECT_ENDPOINT",
-        ]
-        missing = [name for name in required if not os.getenv(name)]
-        checks.append(
-            (
-                "foundry_config",
-                len(missing) == 0,
-                "all foundry env vars present" if not missing else f"missing: {', '.join(missing)}",
-            )
+    try:
+        importlib.import_module("chainlit")
+        checks.append(("chainlit_import", True, "chainlit importable"))
+    except Exception as exc:
+        checks.append(("chainlit_import", False, str(exc)))
+
+    deployment_present = bool(os.getenv("FOUNDRY_MODEL_DEPLOYMENT"))
+    endpoint_present = bool(
+        os.getenv("FOUNDRY_OPENAI_ENDPOINT")
+        or os.getenv("FOUNDRY_PROJECT_ENDPOINT")
+        or os.getenv("FOUNDRY_ENDPOINT")
+    )
+    checks.append(
+        (
+            "foundry_config",
+            deployment_present and endpoint_present,
+            "deployment + endpoint present"
+            if deployment_present and endpoint_present
+            else "missing FOUNDRY_MODEL_DEPLOYMENT or endpoint config",
         )
+    )
+    checks.append(
+        (
+            "foundry_auth_config",
+            bool(os.getenv("FOUNDRY_API_KEY")) or bool(os.getenv("AZURE_CLIENT_ID")),
+            "API key or Azure Identity hints present"
+            if (bool(os.getenv("FOUNDRY_API_KEY")) or bool(os.getenv("AZURE_CLIENT_ID")))
+            else "set FOUNDRY_API_KEY or configure Azure Identity credentials",
+        )
+    )
 
     return checks
 
@@ -87,4 +93,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
