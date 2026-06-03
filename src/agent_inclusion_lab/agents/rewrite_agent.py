@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from agent_inclusion_lab.agents.contracts import AgentPlugin
+from agent_inclusion_lab.model_client import generate_text
 
 
 def run_revision_synthesizer(
@@ -10,14 +11,31 @@ def run_revision_synthesizer(
     reviewer_feedback: list[dict[str, Any]],
     inclusive_principles: str,
 ) -> str:
-    _ = inclusive_principles
     has_suggestions = any(item.get("suggestions") for item in reviewer_feedback)
     if not has_suggestions:
         return baseline_output
 
-    # Main branch intentionally keeps baseline unchanged.
-    # Reference implementation can replace this with rewrite logic.
-    return baseline_output
+    panel_notes = []
+    for item in reviewer_feedback:
+        suggestions = item.get("suggestions", [])
+        if suggestions:
+            joined = "; ".join(str(s) for s in suggestions)
+            panel_notes.append(f"- {item.get('reviewer')}: {joined}")
+    panel_text = "\n".join(panel_notes)
+
+    prompt = (
+        "You are revising a job posting to reduce bias and improve equal access.\n"
+        "Keep core business intent and responsibilities intact.\n"
+        "Do not invent facts.\n"
+        "Return revised posting text only.\n\n"
+        "Improver panel guidance:\n"
+        f"{panel_text}\n\n"
+        "Inclusive principles:\n"
+        f"{inclusive_principles}\n\n"
+        "Original posting:\n"
+        f"{baseline_output}"
+    )
+    return generate_text(prompt)
 
 
 def _run_plugin(state: dict[str, Any]) -> dict[str, Any]:

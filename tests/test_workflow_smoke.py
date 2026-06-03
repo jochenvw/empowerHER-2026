@@ -26,6 +26,7 @@ def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
         }
 
     monkeypatch.setattr(workflow, "evaluate_text", fake_eval)
+    monkeypatch.setenv("INCLUSION_REVIEW_AGENTS", "reviewer.default")
 
     root = Path(__file__).resolve().parents[1]
     legacy_path = root / "data" / "legacy" / "hiring_guidelines_legacy.md"

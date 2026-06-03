@@ -46,8 +46,15 @@ def _selected_review_agent_ids() -> list[str]:
     values = [item.strip() for item in raw.split(",") if item.strip()]
     if values:
         return values
-    default = resolve_agent(stage="review", requested_agent_id=os.getenv("INCLUSION_REVIEW_AGENT"))
-    return [default.agent_id]
+    configured_default = os.getenv("INCLUSION_REVIEW_AGENT")
+    if configured_default:
+        default = resolve_agent(stage="review", requested_agent_id=configured_default)
+        return [default.agent_id]
+    return [
+        "reviewer.gender_eligibility",
+        "reviewer.leadership_framing",
+        "reviewer.equal_access",
+    ]
 
 
 def run_inclusion_workflow(job_post_path: str | Path, inclusive_principles: str) -> WorkflowResult:
