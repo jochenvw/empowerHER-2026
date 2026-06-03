@@ -53,9 +53,9 @@ def _resolve_project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _load_sources() -> tuple[str, str]:
+def _load_sources() -> tuple[Path, str]:
     root = _resolve_project_root()
-    legacy = load_text(root / "data" / "legacy" / "hiring_guidelines_legacy.md")
+    legacy = root / "data" / "legacy" / "hiring_guidelines_legacy.md"
     clean = load_text(root / "data" / "clean" / "inclusive_hiring_principles.md")
     return legacy, clean
 
@@ -87,8 +87,12 @@ def _run_reviewed() -> int:
 
     print("=== Baseline output ===")
     print(result.baseline_output)
-    print("\n=== Rewritten output ===")
-    print("(not available on main; remediation agents live on reference implementation branch)")
+    if result.feedback_summary:
+        print("\n=== Feedback summary ===")
+        for item in result.feedback_summary:
+            print(f"- {item}")
+
+    print("\n=== Improved output ===")
     print(result.rewritten_output)
     print("\n=== Scores ===")
     print(

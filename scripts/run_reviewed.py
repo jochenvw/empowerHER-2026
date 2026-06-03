@@ -11,15 +11,18 @@ def main() -> None:
     legacy_path = root / "data" / "legacy" / "hiring_guidelines_legacy.md"
     clean_path = root / "data" / "clean" / "inclusive_hiring_principles.md"
 
-    legacy_guidance = load_text(legacy_path)
     clean_principles = load_text(clean_path)
 
-    result = run_inclusion_workflow(legacy_guidance, clean_principles)
+    result = run_inclusion_workflow(legacy_path, clean_principles)
 
     print("=== Baseline output ===")
     print(result.baseline_output)
-    print("\n=== Rewritten output ===")
-    print("(not available on main; remediation agents live on reference implementation branch)")
+    if result.feedback_summary:
+        print("\n=== Feedback summary ===")
+        for item in result.feedback_summary:
+            print(f"- {item}")
+
+    print("\n=== Improved output ===")
     print(result.rewritten_output)
     print("\n=== Scores ===")
     print(

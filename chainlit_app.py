@@ -21,15 +21,14 @@ def _load_workshop_sources() -> tuple[str, str]:
     root = _repo_root()
     legacy_path = root / "data" / "legacy" / "hiring_guidelines_legacy.md"
     clean_path = root / "data" / "clean" / "inclusive_hiring_principles.md"
-    legacy = legacy_path.read_text(encoding="utf-8")
     clean = clean_path.read_text(encoding="utf-8")
-    return legacy, clean
+    return str(legacy_path), clean
 
 
 @cl.on_chat_start
 async def on_chat_start() -> None:
-    legacy, clean = _load_workshop_sources()
-    cl.user_session.set("legacy_guidance", legacy)
+    legacy_path, clean = _load_workshop_sources()
+    cl.user_session.set("legacy_path", legacy_path)
     cl.user_session.set("inclusive_principles", clean)
 
     prompt_hints = "\n".join(f"- {prompt}" for prompt in _STARTER_PROMPTS)
@@ -53,11 +52,11 @@ async def on_message(message: cl.Message) -> None:
         await cl.Message(content="Please provide a drafting request.").send()
         return
 
-    legacy_guidance = str(cl.user_session.get("legacy_guidance"))
+    legacy_path = str(cl.user_session.get("legacy_path"))
     inclusive_principles = str(cl.user_session.get("inclusive_principles"))
 
     result = run_inclusion_workflow(
-        legacy_guidance=legacy_guidance,
+        job_post_path=legacy_path,
         inclusive_principles=inclusive_principles,
     )
 
@@ -81,6 +80,10 @@ async def on_message(message: cl.Message) -> None:
             f"### Reviewer findings\n{findings_text}\n\n"
             f"### LLM eval details\n{eval_text}\n\n"
             "### Baseline job opening (verbatim)\n"
-            f"{result.baseline_output}"
+            f"{result.baseline_output}\n\n"
+            f"### Feedback summary\n"
+            + ("\n".join(f"- {item}" for item in result.feedback_summary) if result.feedback_summary else "- None") +
+            "\n\n### Improved job opening\n"
+            f"{result.rewritten_output}"
         )
     ).send()

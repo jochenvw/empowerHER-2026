@@ -9,9 +9,10 @@ from agent_inclusion_lab.workflow import run_inclusion_workflow
 
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
-    legacy_text = load_text(root / "data" / "legacy" / "hiring_guidelines_legacy.md")
+    legacy_path = root / "data" / "legacy" / "hiring_guidelines_legacy.md"
     clean_text = load_text(root / "data" / "clean" / "inclusive_hiring_principles.md")
-    workflow = run_inclusion_workflow(legacy_text, clean_text)
+
+    workflow = run_inclusion_workflow(legacy_path, clean_text)
 
     baseline_eval = evaluate_text(workflow.baseline_output)
     rewritten_eval = evaluate_text(workflow.rewritten_output)

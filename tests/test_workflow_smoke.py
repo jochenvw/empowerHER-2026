@@ -28,10 +28,11 @@ def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
     monkeypatch.setattr(workflow, "evaluate_text", fake_eval)
 
     root = Path(__file__).resolve().parents[1]
-    legacy = load_text(root / "data" / "legacy" / "hiring_guidelines_legacy.md")
+    legacy_path = root / "data" / "legacy" / "hiring_guidelines_legacy.md"
+    legacy = load_text(legacy_path)
     clean = load_text(root / "data" / "clean" / "inclusive_hiring_principles.md")
 
-    result = run_inclusion_workflow(legacy, clean)
+    result = run_inclusion_workflow(legacy_path, clean)
     assert result.baseline_output == legacy.strip()
     assert result.rewritten_output == result.baseline_output
     assert result.baseline_eval["overall_score"] == result.rewritten_eval["overall_score"]
