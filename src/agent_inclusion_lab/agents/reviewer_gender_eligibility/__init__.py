@@ -40,4 +40,3 @@ AGENT_PLUGIN = AgentPlugin(
     description="Flags language implying the role is intended for men.",
     runner=_run_plugin,
 )
-

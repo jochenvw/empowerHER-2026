@@ -6,6 +6,7 @@ from agent_inclusion_lab.agents.contracts import AgentPlugin
 
 
 def run_inclusion_reviewer(text: str) -> dict[str, Any]:
+    _ = text
     return {
         "reviewer": "reviewer.accept_all",
         "summary": "No improvements suggested.",

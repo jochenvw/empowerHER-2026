@@ -47,4 +47,3 @@ AGENT_PLUGIN = AgentPlugin(
     description="Flags non-job-related barriers affecting equal access.",
     runner=_run_plugin,
 )
-

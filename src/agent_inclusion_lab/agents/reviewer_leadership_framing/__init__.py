@@ -48,4 +48,3 @@ AGENT_PLUGIN = AgentPlugin(
     description="Flags stereotype-based leadership framing and coded suitability traits.",
     runner=_run_plugin,
 )
-

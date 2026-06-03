@@ -1,17 +1,29 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import os
-from pathlib import Path
+import warnings
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
-from agent_inclusion_lab.agents.contracts import AgentStage
-from agent_inclusion_lab.agents.registry import resolve_agent
-from agent_inclusion_lab.evals.inclusion_eval import evaluate_text
+warnings.filterwarnings(
+    "ignore",
+    message=".*experimental.*",
+    module="agent_framework.*",
+)
 
-_SELECTION_ENV_BY_STAGE: dict[AgentStage, str] = {
-    "draft": "INCLUSION_DRAFT_AGENT",
-    "rewrite": "INCLUSION_REWRITE_AGENT",
+import agent_framework as af
+
+from agent_inclusion_lab.agents.prompt_loader import build_agent_instructions
+from agent_inclusion_lab.evals.inclusion_eval import evaluate_text
+from agent_inclusion_lab.model_client import create_framework_chat_client
+from agent_inclusion_lab.skills.job_post_reader import read_job_post
+_REVIEWER_IDS = {
+    "reviewer.gender_eligibility",
+    "reviewer.leadership_framing",
+    "reviewer.equal_access",
 }
 
 
@@ -26,76 +38,185 @@ class WorkflowResult:
     rewritten_eval: dict[str, Any]
 
 
-def _build_initial_state(job_post_path: str | Path, inclusive_principles: str) -> dict[str, Any]:
-    return {
-        "job_post_path": str(job_post_path),
-        "inclusive_principles": inclusive_principles,
-        "baseline_output": "",
-        "reviews": [],
-        "rewritten_output": "",
-    }
-
-
-def _selected_agent_id(stage: AgentStage) -> str | None:
-    env_var = _SELECTION_ENV_BY_STAGE[stage]
-    return os.getenv(env_var)
-
-
 def _selected_review_agent_ids() -> list[str]:
     raw = os.getenv("INCLUSION_REVIEW_AGENTS", "")
     values = [item.strip() for item in raw.split(",") if item.strip()]
     if values:
-        return values
-    configured_default = os.getenv("INCLUSION_REVIEW_AGENT")
-    if configured_default:
-        default = resolve_agent(stage="review", requested_agent_id=configured_default)
-        return [default.agent_id]
-    return [
-        "reviewer.gender_eligibility",
-        "reviewer.leadership_framing",
-        "reviewer.equal_access",
-    ]
+        valid = [item for item in values if item in _REVIEWER_IDS]
+        if valid:
+            return valid
+    return sorted(_REVIEWER_IDS)
 
 
-def run_inclusion_workflow(job_post_path: str | Path, inclusive_principles: str) -> WorkflowResult:
-    state = _build_initial_state(job_post_path, inclusive_principles)
-    draft_agent = resolve_agent(stage="draft", requested_agent_id=_selected_agent_id("draft"))
-    updates = draft_agent.runner(state)
-    if not updates:
-        raise RuntimeError(f"Agent {draft_agent.agent_id} returned no state updates.")
-    state.update(updates)
+def _extract_json_payload(text: str) -> dict[str, Any]:
+    candidate = text.strip()
+    start = candidate.find("{")
+    end = candidate.rfind("}")
+    if start < 0 or end <= start:
+        raise ValueError("No JSON object found in model output.")
+    parsed = json.loads(candidate[start : end + 1])
+    if not isinstance(parsed, dict):
+        raise ValueError("Model output JSON was not an object.")
+    return parsed
 
+
+def _coerce_text(response: Any) -> str:
+    text = getattr(response, "text", None)
+    if isinstance(text, str) and text.strip():
+        return text.strip()
+    value = getattr(response, "value", None)
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    raise ValueError("Agent response did not include text output.")
+
+
+async def run_review_panel(
+    baseline_output: str,
+    inclusive_principles: str,
+) -> list[dict[str, Any]]:
+    client = create_framework_chat_client()
     review_panel: list[dict[str, Any]] = []
     for reviewer_id in _selected_review_agent_ids():
-        reviewer = resolve_agent(stage="review", requested_agent_id=reviewer_id)
-        updates = reviewer.runner(state)
-        review = updates.get("review")
-        if isinstance(review, dict):
-            review_panel.append(review)
-    state["reviews"] = review_panel
+        reviewer = af.Agent(
+            id=reviewer_id,
+            name=reviewer_id,
+            instructions=build_agent_instructions(reviewer_id),
+            client=client,
+        )
+        response = await reviewer.run(
+            "Evaluate this job posting text only.\n"
+            "Do not assume intent. Use exact text evidence.\n\n"
+            f"Job posting:\n{baseline_output}\n\n"
+            f"Inclusive principles context:\n{inclusive_principles}"
+        )
+        parsed = _extract_json_payload(_coerce_text(response))
+        summary = str(parsed.get("summary", "")).strip()
+        suggestions = [
+            str(item).strip()
+            for item in parsed.get("suggestions", [])
+            if str(item).strip()
+        ]
+        evidence_spans = [
+            str(item).strip()
+            for item in parsed.get("evidence_spans", [])
+            if str(item).strip()
+        ]
+        review_panel.append(
+            {
+                "reviewer": reviewer_id,
+                "summary": summary,
+                "suggestions": suggestions,
+                "evidence_spans": evidence_spans,
+            }
+        )
+    return review_panel
 
-    rewrite_agent = resolve_agent(stage="rewrite", requested_agent_id=_selected_agent_id("rewrite"))
-    rewrite_updates = rewrite_agent.runner(state)
-    if rewrite_updates:
-        state.update(rewrite_updates)
+
+async def run_editor_agent(
+    baseline_output: str,
+    review_panel: list[dict[str, Any]],
+    inclusive_principles: str,
+) -> tuple[list[str], str]:
+    client = create_framework_chat_client()
+    editor = af.Agent(
+        id="editor.synthesizer",
+        name="editor.synthesizer",
+        instructions=build_agent_instructions("editor.synthesizer"),
+        client=client,
+    )
+    response = await editor.run(
+        "Baseline posting:\n"
+        f"{baseline_output}\n\n"
+        "Review panel feedback (JSON):\n"
+        f"{json.dumps(review_panel, ensure_ascii=True)}\n\n"
+        "Inclusive principles:\n"
+        f"{inclusive_principles}"
+    )
+    parsed = _extract_json_payload(_coerce_text(response))
+    feedback_summary = [
+        str(item).strip()
+        for item in parsed.get("feedback_summary", [])
+        if str(item).strip()
+    ]
+    improved = str(parsed.get("improved_job_posting", "")).strip()
+    if not bool(parsed.get("change_required", False)):
+        improved = baseline_output
+    if not improved:
+        improved = baseline_output
+    if not feedback_summary:
+        feedback_summary = [
+            str(item.get("summary", "")).strip()
+            for item in review_panel
+            if str(item.get("summary", "")).strip()
+        ]
+    return feedback_summary, improved
+
+
+async def run_inclusion_workflow_async(
+    job_post_path: str | Path, inclusive_principles: str
+) -> WorkflowResult:
+    path = str(job_post_path)
+
+    async def _workflow_impl(message: dict[str, str] | None = None) -> dict[str, Any]:
+        if not message or "job_post_path" not in message:
+            raise RuntimeError("Workflow input must include 'job_post_path'.")
+        baseline_output = read_job_post(message["job_post_path"]).strip()
+        review_panel = await run_review_panel(
+            baseline_output=baseline_output,
+            inclusive_principles=inclusive_principles,
+        )
+        feedback_summary, rewritten_output = await run_editor_agent(
+            baseline_output=baseline_output,
+            review_panel=review_panel,
+            inclusive_principles=inclusive_principles,
+        )
+        return {
+            "baseline_output": baseline_output,
+            "review_panel": review_panel,
+            "feedback_summary": feedback_summary,
+            "rewritten_output": rewritten_output,
+        }
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=".*FUNCTIONAL_WORKFLOWS.*",
+        )
+        workflow = af.FunctionalWorkflow(
+            _workflow_impl,
+            name="inclusion-workflow",
+            description="Reader skill -> review panel agents -> editor agent.",
+        )
+    run_result = await workflow.run({"job_post_path": path})
+    outputs = run_result.get_outputs()
+    if not outputs:
+        raise RuntimeError("Workflow produced no outputs.")
+    state = outputs[-1]
+    if not isinstance(state, dict):
+        raise RuntimeError("Workflow output was not a state object.")
 
     baseline_output = str(state["baseline_output"])
-    rewritten_output = baseline_output
+    rewritten_output = str(state["rewritten_output"])
+    review_panel = list(state["review_panel"])
+    feedback_summary = list(state["feedback_summary"])
 
     baseline_eval = evaluate_text(baseline_output)
-    rewritten_output = str(state.get("rewritten_output", baseline_output))
     rewritten_eval = evaluate_text(rewritten_output)
-    feedback_summary = [
-        str(item.get("summary", "")).strip()
-        for item in review_panel
-        if str(item.get("summary", "")).strip()
-    ]
     return WorkflowResult(
-        job_post_path=str(state["job_post_path"]),
+        job_post_path=path,
         baseline_output=baseline_output,
         feedback_summary=feedback_summary,
         review_panel=review_panel,
         rewritten_output=rewritten_output,
         baseline_eval=baseline_eval,
         rewritten_eval=rewritten_eval,
+    )
+
+
+def run_inclusion_workflow(job_post_path: str | Path, inclusive_principles: str) -> WorkflowResult:
+    return asyncio.run(
+        run_inclusion_workflow_async(
+            job_post_path=job_post_path,
+            inclusive_principles=inclusive_principles,
+        )
     )
