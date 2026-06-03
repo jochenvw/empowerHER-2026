@@ -12,5 +12,3 @@ Apply the project-wide rules from `../copilot-instructions.md`, then apply these
 - Keep functions short and names explicit.
 - Prefer deterministic behavior in tests and evals.
 - Avoid broad exception handling and silent failures.
-- Preserve `DRY_RUN` support when changing model/client workflow code.
-

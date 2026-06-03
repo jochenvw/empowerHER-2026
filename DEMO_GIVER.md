@@ -36,20 +36,12 @@ Rotate or revoke workshop credentials immediately after the session.
 Participants should create `.env` from `.env.example` and paste values there:
 
 ```env
-DRY_RUN=false
 FOUNDRY_ENDPOINT=<paste endpoint>
 FOUNDRY_API_KEY=<paste api key>
 FOUNDRY_MODEL_DEPLOYMENT=<paste deployment name>
 FOUNDRY_PROJECT_ENDPOINT=<paste project endpoint>
+FOUNDRY_OPENAI_ENDPOINT=<optional; use if provided directly>
 ```
-
-For participants without credentials, keep:
-
-```env
-DRY_RUN=true
-```
-
-They can still complete the workshop flow without Foundry access.
 
 ## 5) Participant sanity-check command
 
@@ -74,6 +66,5 @@ Then:
 ## 7) Troubleshooting quick list
 
 - If import errors appear: run `uv sync` again.
-- If credentials errors appear: verify `.env` and set `DRY_RUN=true` for offline mode.
-- If score changes are unclear: run `uv run python scripts/run_evals.py` to get deterministic checks.
-
+- If credentials errors appear: verify `.env` endpoint/deployment/API key values.
+- If score changes are unclear: run `uv run python scripts/run_evals.py` to compare LLM judge outputs.

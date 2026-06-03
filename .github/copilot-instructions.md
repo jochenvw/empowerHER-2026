@@ -9,7 +9,6 @@ applyTo: "**"
 - Keep orchestration in `src/agent_inclusion_lab/workflow.py`.
 - Keep eval logic in `src/agent_inclusion_lab/evals`.
 - Use typed, explicit Python and small functions.
-- Preserve `DRY_RUN` support.
 - Never commit secrets or endpoints in source.
 - Add tests for new behaviors.
 - Prefer structured findings to vague summaries.

@@ -9,7 +9,6 @@
 - Do not add large dependencies unless necessary.
 - Prefer idiomatic, typed Python with small functions.
 - Add tests for each new agent or eval behavior.
-- Maintain `DRY_RUN` support.
 - Do not "fix bias" with only one hardcoded string replacement.
 - Prefer structured findings over vague prose.
 - Keep outputs understandable for beginners.

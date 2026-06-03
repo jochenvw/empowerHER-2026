@@ -1,27 +1,23 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from agent_inclusion_lab.agents.contracts import AgentPlugin
-from agent_inclusion_lab.model_client import generate_text
+from agent_inclusion_lab.skills.job_post_reader import read_job_post
 
 
-def run_baseline_agent(legacy_guidance: str) -> str:
-    prompt = (
-        "Use the available hiring guidance to draft a job description and interview "
-        "rubric for a Senior Engineering Manager.\n\n"
-        "Guidance:\n"
-        f"{legacy_guidance}"
-    )
-    return generate_text(prompt)
+def run_baseline_agent(job_post_path: str | Path) -> str:
+    return read_job_post(job_post_path).strip()
 
 
 def _run_plugin(state: dict[str, object]) -> dict[str, object]:
-    legacy_guidance = str(state["legacy_guidance"])
-    return {"baseline_output": run_baseline_agent(legacy_guidance)}
+    job_post_path = str(state["job_post_path"])
+    return {"baseline_output": run_baseline_agent(job_post_path)}
 
 
 AGENT_PLUGIN = AgentPlugin(
     agent_id="baseline.default",
     stage="draft",
-    description="Drafts a role description and interview rubric from legacy guidance.",
+    description="Reads the job post via skill and returns it verbatim as baseline.",
     runner=_run_plugin,
 )

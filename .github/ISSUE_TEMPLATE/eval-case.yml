@@ -1,5 +1,5 @@
 name: New eval case
-description: Propose a deterministic evaluation case.
+description: Propose an LLM-judge evaluation case.
 title: "[eval-case] "
 labels: ["evaluation"]
 body:
@@ -31,4 +31,3 @@ body:
       description: Which fairness risk pattern this case targets.
     validations:
       required: true
-
