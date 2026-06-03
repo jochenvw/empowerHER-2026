@@ -1,1 +1,0 @@
-"""Editor synth agent assets."""

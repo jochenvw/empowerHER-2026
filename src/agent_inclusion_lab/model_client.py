@@ -1,19 +1,9 @@
 from __future__ import annotations
 
-import warnings
-
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import OpenAI
 
 from .config import Settings, get_settings
-
-warnings.filterwarnings(
-    "ignore",
-    message=".*experimental.*",
-    module="agent_framework.*",
-)
-
-from agent_framework.openai import OpenAIChatClient
 
 
 def generate_text(prompt: str) -> str:
@@ -54,19 +44,6 @@ def _call_foundry_model(prompt: str, settings: Settings) -> str:
         if parts:
             return "\n".join(parts).strip()
     raise RuntimeError("Model response did not contain text content.")
-
-
-def create_framework_chat_client() -> OpenAIChatClient:
-    settings = get_settings()
-    deployment = settings.foundry_model_deployment or ""
-    if not deployment:
-        raise RuntimeError("FOUNDRY_MODEL_DEPLOYMENT is required.")
-    return OpenAIChatClient(
-        model=deployment,
-        base_url=_resolve_openai_base_url(settings),
-        api_key=_resolve_api_key(settings),
-    )
-
 
 def _resolve_api_key(settings: Settings):
     if settings.foundry_api_key:

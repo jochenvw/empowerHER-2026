@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from types import SimpleNamespace
 
 from agent_inclusion_lab import workflow
 from agent_inclusion_lab.skills.document_loader import load_text
@@ -9,30 +10,7 @@ from agent_inclusion_lab.workflow import run_inclusion_workflow
 
 
 def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
-    async def fake_run_review_panel(
-        baseline_output: str, inclusive_principles: str
-    ) -> list[dict[str, Any]]:
-        _ = baseline_output
-        _ = inclusive_principles
-        return [
-            {
-                "reviewer": "reviewer.noop",
-                "summary": "No improvements suggested.",
-                "suggestions": [],
-                "evidence_spans": [],
-            }
-        ]
-
-    async def fake_run_editor_agent(
-        baseline_output: str,
-        review_panel: list[dict[str, Any]],
-        inclusive_principles: str,
-    ) -> tuple[list[str], str]:
-        _ = review_panel
-        _ = inclusive_principles
-        return (["No improvements suggested."], baseline_output)
-
-    def fake_eval(text: str) -> dict[str, object]:
+    async def fake_eval_async(text: str) -> dict[str, object]:
         score = 1 if "gentleman" in text.lower() else 5
         return {
             "overall_score": float(score),
@@ -49,9 +27,29 @@ def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
             ],
         }
 
-    monkeypatch.setattr(workflow, "run_review_panel", fake_run_review_panel)
-    monkeypatch.setattr(workflow, "run_editor_agent", fake_run_editor_agent)
-    monkeypatch.setattr(workflow, "evaluate_text", fake_eval)
+    def fake_resolve_agent(stage: str, requested_agent_id: str | None = None):
+        _ = requested_agent_id
+        if stage == "draft":
+            return SimpleNamespace(
+                runner=lambda state: {
+                    "baseline_output": load_text(Path(state["job_post_path"])).strip()
+                }
+            )
+        if stage == "review":
+            return SimpleNamespace(
+                runner=lambda _state: {
+                    "review": {
+                        "reviewer": "reviewer.default",
+                        "summary": "No improvements suggested.",
+                        "suggestions": [],
+                        "evidence_spans": [],
+                    }
+                }
+            )
+        raise AssertionError(f"Unexpected stage: {stage}")
+
+    monkeypatch.setattr(workflow, "resolve_agent", fake_resolve_agent)
+    monkeypatch.setattr(workflow, "evaluate_text_async", fake_eval_async)
 
     root = Path(__file__).resolve().parents[1]
     legacy_path = root / "data" / "legacy" / "hiring_guidelines_legacy.md"

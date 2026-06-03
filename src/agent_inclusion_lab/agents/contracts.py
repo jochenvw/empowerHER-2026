@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Literal
 
-AgentStage = Literal["draft", "review", "rewrite"]
+AgentStage = Literal["draft", "review"]
 AgentState = dict[str, Any]
 AgentRunner = Callable[[AgentState], dict[str, Any]]
 
@@ -14,4 +14,3 @@ class AgentPlugin:
     stage: AgentStage
     description: str
     runner: AgentRunner
-
