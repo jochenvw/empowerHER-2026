@@ -77,6 +77,17 @@ async def run_review_panel(
     client = create_framework_chat_client()
     review_panel: list[dict[str, Any]] = []
     for reviewer_id in _selected_review_agent_ids():
+        if reviewer_id == "reviewer.default":
+            review_panel.append(
+                {
+                    "reviewer": "reviewer.default",
+                    "summary": "No improvements suggested.",
+                    "suggestions": [],
+                    "evidence_spans": [],
+                }
+            )
+            continue
+
         reviewer = af.Agent(
             id=reviewer_id,
             name=reviewer_id,
@@ -117,6 +128,10 @@ async def run_editor_agent(
     review_panel: list[dict[str, Any]],
     inclusive_principles: str,
 ) -> tuple[list[str], str]:
+    has_suggestions = any(item.get("suggestions") for item in review_panel)
+    if not has_suggestions:
+        return (["No improvements suggested."], baseline_output)
+
     client = create_framework_chat_client()
     editor = af.Agent(
         id="editor.synthesizer",
