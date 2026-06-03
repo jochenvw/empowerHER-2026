@@ -7,6 +7,7 @@ from pathlib import Path
 from agent_inclusion_lab.agents.contracts import AgentPlugin, AgentStage
 
 _SKIP_FILES = {"__init__.py", "contracts.py", "registry.py"}
+_SKIP_DIRS = {"__pycache__"}
 _STAGES: tuple[AgentStage, ...] = ("draft", "review", "rewrite")
 
 
@@ -15,10 +16,21 @@ def discover_agent_plugins() -> dict[str, AgentPlugin]:
     plugins: dict[str, AgentPlugin] = {}
     package_dir = Path(__file__).resolve().parent
 
+    module_names: list[str] = []
+
     for file_path in sorted(package_dir.glob("*.py")):
         if file_path.name in _SKIP_FILES:
             continue
-        module_name = f"agent_inclusion_lab.agents.{file_path.stem}"
+        module_names.append(f"agent_inclusion_lab.agents.{file_path.stem}")
+
+    for dir_path in sorted(package_dir.iterdir()):
+        if not dir_path.is_dir() or dir_path.name in _SKIP_DIRS:
+            continue
+        if not (dir_path / "__init__.py").exists():
+            continue
+        module_names.append(f"agent_inclusion_lab.agents.{dir_path.name}")
+
+    for module_name in module_names:
         module = importlib.import_module(module_name)
         plugin = getattr(module, "AGENT_PLUGIN", None)
         if plugin is None:
@@ -59,4 +71,3 @@ def resolve_agent(stage: AgentStage, requested_agent_id: str | None = None) -> A
 
     default_id = get_default_agent_ids_by_stage()[stage]
     return plugins[default_id]
-

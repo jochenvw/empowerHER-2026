@@ -4,7 +4,7 @@ from pathlib import Path
 
 import chainlit as cl
 
-from agent_inclusion_lab.workflow import run_inclusion_workflow
+from agent_inclusion_lab.workflow import run_inclusion_workflow_async
 
 _STARTER_PROMPTS = [
     "List current job openings.",
@@ -55,7 +55,7 @@ async def on_message(message: cl.Message) -> None:
     legacy_path = str(cl.user_session.get("legacy_path"))
     inclusive_principles = str(cl.user_session.get("inclusive_principles"))
 
-    result = run_inclusion_workflow(
+    result = await run_inclusion_workflow_async(
         job_post_path=legacy_path,
         inclusive_principles=inclusive_principles,
     )
