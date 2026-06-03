@@ -1,0 +1,49 @@
+name: New agent proposal
+description: Propose a new workshop agent.
+title: "[new-agent] "
+labels: ["enhancement", "agent"]
+body:
+  - type: input
+    id: agent_name
+    attributes:
+      label: Agent name
+      description: Name of the new agent.
+    validations:
+      required: true
+  - type: textarea
+    id: responsibility
+    attributes:
+      label: Responsibility
+      description: What this agent should do.
+    validations:
+      required: true
+  - type: textarea
+    id: input_context
+    attributes:
+      label: Input context
+      description: What context or data the agent needs.
+    validations:
+      required: true
+  - type: textarea
+    id: expected_output
+    attributes:
+      label: Expected output
+      description: What the agent should return.
+    validations:
+      required: true
+  - type: textarea
+    id: tools_skills
+    attributes:
+      label: Tools or skills needed
+      description: Which helpers or skills are required.
+  - type: textarea
+    id: eval_cases
+    attributes:
+      label: Eval cases
+      description: Cases that should validate this agent.
+  - type: textarea
+    id: failure_modes
+    attributes:
+      label: Failure modes
+      description: Common or risky failure patterns to watch for.
+
