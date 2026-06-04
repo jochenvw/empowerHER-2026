@@ -46,6 +46,10 @@ def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
                     }
                 }
             )
+        if stage == "rewrite":
+            return SimpleNamespace(
+                runner=lambda state: {"rewritten_output": str(state["baseline_output"])}
+            )
         raise AssertionError(f"Unexpected stage: {stage}")
 
     monkeypatch.setattr(workflow, "resolve_agent", fake_resolve_agent)
@@ -60,3 +64,50 @@ def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
     assert result.baseline_output == legacy.strip()
     assert result.rewritten_output == result.baseline_output
     assert result.baseline_eval["overall_score"] == result.rewritten_eval["overall_score"]
+
+
+def test_workflow_rewrite_plugin_improves_after_score(monkeypatch) -> None:
+    """A rewrite plugin that changes the text is evaluated separately and can
+    raise the after-score, without editing workflow logic."""
+
+    async def fake_eval_async(text: str) -> dict[str, object]:
+        score = 1 if "gentleman" in text.lower() else 5
+        return {
+            "overall_score": float(score),
+            "overall_pass": score >= 4,
+            "evals": [],
+        }
+
+    def fake_resolve_agent(stage: str, requested_agent_id: str | None = None):
+        _ = requested_agent_id
+        if stage == "draft":
+            return SimpleNamespace(
+                runner=lambda _state: {"baseline_output": "A married gentleman is preferred."}
+            )
+        if stage == "review":
+            return SimpleNamespace(
+                runner=lambda _state: {
+                    "review": {
+                        "reviewer": "reviewer.custom",
+                        "summary": "Remove gendered language.",
+                        "suggestions": ["Use neutral candidate framing."],
+                        "evidence_spans": ["married gentleman"],
+                    }
+                }
+            )
+        if stage == "rewrite":
+            return SimpleNamespace(
+                runner=lambda state: {
+                    "rewritten_output": "We welcome all qualified candidates.",
+                    "_review_seen": state.get("review", {}).get("summary"),
+                }
+            )
+        raise AssertionError(f"Unexpected stage: {stage}")
+
+    monkeypatch.setattr(workflow, "resolve_agent", fake_resolve_agent)
+    monkeypatch.setattr(workflow, "evaluate_text_async", fake_eval_async)
+
+    result = run_inclusion_workflow("ignored.md", "principles")
+    assert result.rewritten_output != result.baseline_output
+    assert result.baseline_eval["overall_score"] < result.rewritten_eval["overall_score"]
+    assert result.rewritten_eval["overall_pass"] is True

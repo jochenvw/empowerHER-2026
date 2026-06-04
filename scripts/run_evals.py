@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agent_inclusion_lab.evals.inclusion_eval import evaluate_text
 from agent_inclusion_lab.skills.document_loader import load_text
 from agent_inclusion_lab.workflow import run_inclusion_workflow
 
@@ -14,8 +13,8 @@ def main() -> None:
 
     workflow = run_inclusion_workflow(legacy_path, clean_text)
 
-    baseline_eval = evaluate_text(workflow.baseline_output)
-    rewritten_eval = evaluate_text(workflow.rewritten_output)
+    baseline_eval = workflow.baseline_eval
+    rewritten_eval = workflow.rewritten_eval
 
     print("version,overall_score,overall_pass")
     print(

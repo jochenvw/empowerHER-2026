@@ -31,7 +31,9 @@ def _run_script(skill: FileSkill, script: FileSkillScript, args: dict[str, Any] 
         cli_args = []
 
     command = [sys.executable, script.full_path, *cli_args]
-    completed = subprocess.run(command, capture_output=True, text=True, check=False)
+    completed = subprocess.run(
+        command, capture_output=True, text=True, encoding="utf-8", check=False
+    )
     if completed.returncode != 0:
         stderr = completed.stderr.strip() or "Unknown script error."
         raise RuntimeError(f"File-based skill script failed: {stderr}")

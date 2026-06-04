@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Literal
 
-AgentStage = Literal["draft", "review"]
+AgentStage = Literal["draft", "review", "rewrite"]
 AgentState = dict[str, Any]
 AgentRunner = Callable[[AgentState], dict[str, Any]]
 

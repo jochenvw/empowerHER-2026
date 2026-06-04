@@ -58,13 +58,26 @@ async def run_inclusion_workflow_async(
     )
     review_item = _extract_review_item(review.runner(state))
     review_panel = [review_item]
+    state["review"] = review_item
 
     baseline_output = str(state.get("baseline_output", "")).strip()
-    rewritten_output = baseline_output
+
+    rewrite = resolve_agent(
+        stage="rewrite",
+        requested_agent_id=_selected_agent_id("INCLUSION_REWRITE_AGENT"),
+    )
+    state.update(rewrite.runner(state))
+    rewritten_output = str(state.get("rewritten_output", baseline_output)).strip()
+
     feedback_summary = [str(review_item.get("summary", "")).strip() or "No improvements suggested."]
 
     baseline_eval = await evaluate_text_async(baseline_output)
-    rewritten_eval = await evaluate_text_async(rewritten_output)
+    # The LLM judge is nondeterministic, so re-judging identical text could show a
+    # misleading score change. Reuse the baseline result when no rewrite happened.
+    if rewritten_output == baseline_output:
+        rewritten_eval = baseline_eval
+    else:
+        rewritten_eval = await evaluate_text_async(rewritten_output)
 
     return WorkflowResult(
         job_post_path=str(state["job_post_path"]),

@@ -8,7 +8,7 @@ from agent_inclusion_lab.agents.contracts import AgentPlugin, AgentStage
 
 _SKIP_FILES = {"__init__.py", "contracts.py", "registry.py"}
 _SKIP_DIRS = {"__pycache__"}
-_STAGES: tuple[AgentStage, ...] = ("draft", "review")
+_STAGES: tuple[AgentStage, ...] = ("draft", "review", "rewrite")
 
 
 @lru_cache(maxsize=1)
