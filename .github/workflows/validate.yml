@@ -7,6 +7,10 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      FOUNDRY_API_KEY: ${{ secrets.FOUNDRY_API_KEY }}
+      FOUNDRY_PROJECT_ENDPOINT: ${{ secrets.FOUNDRY_PROJECT_ENDPOINT }}
+      FOUNDRY_MODEL_DEPLOYMENT: ${{ secrets.FOUNDRY_MODEL_DEPLOYMENT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,9 +30,5 @@ jobs:
         run: uv run pytest
 
       - name: Run LLM evals (optional)
-        if: ${{ secrets.FOUNDRY_API_KEY != '' && secrets.FOUNDRY_PROJECT_ENDPOINT != '' && secrets.FOUNDRY_MODEL_DEPLOYMENT != '' }}
+        if: ${{ env.FOUNDRY_API_KEY != '' && env.FOUNDRY_PROJECT_ENDPOINT != '' && env.FOUNDRY_MODEL_DEPLOYMENT != '' }}
         run: uv run python scripts/run_evals.py
-        env:
-          FOUNDRY_API_KEY: ${{ secrets.FOUNDRY_API_KEY }}
-          FOUNDRY_PROJECT_ENDPOINT: ${{ secrets.FOUNDRY_PROJECT_ENDPOINT }}
-          FOUNDRY_MODEL_DEPLOYMENT: ${{ secrets.FOUNDRY_MODEL_DEPLOYMENT }}
