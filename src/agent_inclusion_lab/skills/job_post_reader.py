@@ -79,7 +79,9 @@ def _load_file_skill() -> tuple[FileSkill, FileSkillScript]:
     if skill is None or not isinstance(skill, FileSkill):
         raise RuntimeError(f"Expected FileSkill '{_SKILL_NAME}' was not discovered.")
 
-    script = next((item for item in skill.scripts if item.name == _SCRIPT_NAME), None)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*\\[SKILLS\\].*")
+        script = _run_async(skill.get_script(_SCRIPT_NAME))
     if script is None or not isinstance(script, FileSkillScript):
         raise RuntimeError(f"Expected script '{_SCRIPT_NAME}' was not discovered for '{_SKILL_NAME}'.")
     return skill, script
