@@ -2,10 +2,6 @@
   "recommendations": [
     "ms-python.python",
     "ms-python.vscode-pylance",
-    "github.copilot",
-    "github.vscode-pull-request-github",
-    "github.vscode-github-actions",
-    "ms-vscode.azure-account",
-    "ms-azuretools.vscode-azureappservice"
+    "github.copilot"
   ]
 }
