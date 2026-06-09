@@ -32,6 +32,13 @@ plugin and select it without editing `workflow.py`:
 INCLUSION_REWRITE_AGENT=<your.rewrite.agent_id> uv run eh reviewed
 ```
 
+A worked example ships in `src/agent_inclusion_lab/agents/rewrite_agent_llm/`: a real
+`agent_framework.Agent` wired into the `rewrite` stage. Try it with:
+
+```bash
+INCLUSION_REWRITE_AGENT=rewrite.llm uv run eh reviewed
+```
+
 The defaults on `main` are intentionally no-ops; keep the reference solution on
 a separate `solution/reference-implementation` branch.
 
