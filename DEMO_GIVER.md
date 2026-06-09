@@ -5,8 +5,8 @@ Use this as a practical runbook for a live workshop.
 ## 1) Pre-demo setup (host)
 
 1. Clone the repo and run `uv sync`.
-2. Run `uv run python scripts/health_check.py`.
-3. Run `uv run python scripts/run_evals.py`.
+2. Run `uv run eh health`.
+3. Run `uv run eh evals`.
 4. Optional full check: `uv run pytest`.
 
 If all pass, your environment is ready.
@@ -47,13 +47,13 @@ FOUNDRY_OPENAI_ENDPOINT=<optional; use if provided directly>
 
 Ask participants to run this first:
 
-`uv run python scripts/health_check.py`
+`uv run eh health`
 
 Then:
 
-- `uv run python scripts/run_baseline.py`
-- `uv run python scripts/run_reviewed.py`
-- `uv run python scripts/run_evals.py`
+- `uv run eh baseline`
+- `uv run eh reviewed`
+- `uv run eh evals`
 
 ## 6) Demo flow suggestion (50 min)
 
@@ -67,4 +67,4 @@ Then:
 
 - If import errors appear: run `uv sync` again.
 - If credentials errors appear: verify `.env` endpoint/deployment/API key values.
-- If score changes are unclear: run `uv run python scripts/run_evals.py` to compare LLM judge outputs.
+- If score changes are unclear: run `uv run eh evals` to compare LLM judge outputs.

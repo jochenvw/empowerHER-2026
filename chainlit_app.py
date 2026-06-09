@@ -4,6 +4,7 @@ from pathlib import Path
 
 import chainlit as cl
 
+from agent_inclusion_lab.config import get_settings
 from agent_inclusion_lab.workflow import run_inclusion_workflow_async
 
 _STARTER_PROMPTS = [
@@ -25,6 +26,21 @@ def _load_workshop_sources() -> tuple[str, str]:
     return str(legacy_path), clean
 
 
+def _runtime_info_lines() -> list[str]:
+    settings = get_settings()
+    endpoint = (
+        settings.foundry_openai_endpoint
+        or settings.foundry_project_endpoint
+        or settings.foundry_endpoint
+        or "not configured"
+    )
+    model = settings.foundry_model_deployment or "not configured"
+    return [
+        f"- **Endpoint:** `{endpoint}`",
+        f"- **Model deployment:** `{model}`",
+    ]
+
+
 @cl.on_chat_start
 async def on_chat_start() -> None:
     legacy_path, clean = _load_workshop_sources()
@@ -32,8 +48,11 @@ async def on_chat_start() -> None:
     cl.user_session.set("inclusive_principles", clean)
 
     prompt_hints = "\n".join(f"- {prompt}" for prompt in _STARTER_PROMPTS)
+    runtime_info = "\n".join(_runtime_info_lines())
     await cl.Message(
         content=(
+            "## empowerHER inclusion workflow\n\n"
+            f"{runtime_info}\n\n"
             "Welcome to the inclusion workflow demo.\n\n"
             "Current baseline workflow:\n"
             "- return the legacy job ad verbatim\n"

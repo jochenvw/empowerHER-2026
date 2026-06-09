@@ -218,8 +218,18 @@ async def evaluate_text_async(text: str) -> dict[str, Any]:
 
 def _judge_single_eval(spec: EvalSpec, text: str) -> dict[str, Any]:
     prompt = _build_eval_prompt(spec=spec, text=text)
-    raw = generate_text(prompt)
-    parsed = _parse_judge_json(raw=raw)
+    parsed = _judge_with_retry(prompt=prompt, attempts=2)
+    if parsed is None:
+        # Graceful degradation: a single malformed judge response should not abort
+        # the whole baseline/reviewed/evals command during a live workshop.
+        return {
+            "eval_name": spec.eval_name,
+            "score": spec.pass_threshold - 1,
+            "pass": False,
+            "rationale": "Judge response could not be parsed; treated as not passing.",
+            "evidence_spans": [],
+            "improvement_advice": "Re-run the evaluation; the model returned unparseable output.",
+        }
 
     score_raw = parsed.get("score", 1)
     score = int(score_raw) if isinstance(score_raw, (int, float, str)) else 1
@@ -245,6 +255,16 @@ def _judge_single_eval(spec: EvalSpec, text: str) -> dict[str, Any]:
         "evidence_spans": evidence_spans[:6],
         "improvement_advice": advice or "Revise wording toward neutral, competency-based criteria.",
     }
+
+
+def _judge_with_retry(prompt: str, attempts: int) -> dict[str, Any] | None:
+    for _ in range(max(1, attempts)):
+        try:
+            raw = generate_text(prompt)
+            return _parse_judge_json(raw=raw)
+        except Exception:
+            continue
+    return None
 
 
 def _build_eval_prompt(spec: EvalSpec, text: str) -> str:

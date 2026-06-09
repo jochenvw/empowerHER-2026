@@ -24,7 +24,7 @@ def main() -> None:
 
     subparsers.add_parser("health", help="Run environment health checks.")
     subparsers.add_parser("baseline", help="Run baseline draft and score.")
-    subparsers.add_parser("reviewed", help="Run baseline->review->rewrite and compare scores.")
+    subparsers.add_parser("reviewed", help="Run baseline and review stages and compare baseline vs reviewed scores.")
     subparsers.add_parser("evals", help="Run LLM judge evaluation checks.")
     ui_parser = subparsers.add_parser("ui", help="Launch Chainlit UI.")
     ui_parser.add_argument("--host", default="127.0.0.1", help="Chainlit host (default: 127.0.0.1)")
@@ -109,8 +109,8 @@ def _run_reviewed() -> int:
 def _run_evals() -> int:
     legacy, clean = _load_sources()
     result = run_inclusion_workflow(legacy, clean)
-    baseline_eval = evaluate_text(result.baseline_output)
-    rewritten_eval = evaluate_text(result.rewritten_output)
+    baseline_eval = result.baseline_eval
+    rewritten_eval = result.rewritten_eval
 
     print("version,overall_score,overall_pass")
     print(f"baseline,{baseline_eval['overall_score']},{baseline_eval['overall_pass']}")
