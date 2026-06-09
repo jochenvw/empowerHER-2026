@@ -53,11 +53,12 @@ async def on_chat_start() -> None:
         content=(
             "## empowerHER inclusion workflow\n\n"
             f"{runtime_info}\n\n"
-            "Welcome to the inclusion workflow demo.\n\n"
-            "Current baseline workflow:\n"
-            "- return the legacy job ad verbatim\n"
-            "- calculate and show inclusion/bias score\n\n"
-            "Later, additional agents can rewrite the text and reduce bias score.\n\n"
+            "Ask for the job posting and the result renders in three columns:\n"
+            "- **left** — what each review agent reasoned (initially: *looks fine, continue as is*)\n"
+            "- **center** — the job posting the pipeline produced\n"
+            "- **right** — the inclusion eval score for that posting\n\n"
+            "As participants contribute reviewer and rewrite agents, more cards appear on the "
+            "left and the score on the right improves on the next request.\n\n"
             "Starter prompts:\n"
             f"{prompt_hints}"
         )
@@ -79,30 +80,15 @@ async def on_message(message: cl.Message) -> None:
         inclusive_principles=inclusive_principles,
     )
 
-    findings = [f"{item['eval_name']}: {item['rationale']}" for item in result.baseline_eval["evals"]]
-    findings_text = "\n".join(f"- {item}" for item in findings) if findings else "- None"
-    eval_rows = []
-    for item in result.baseline_eval["evals"]:
-        evidence = ", ".join(item.get("evidence_spans", [])) or "-"
-        eval_rows.append(
-            f"- **{item.get('eval_name')}**: score={item.get('score')} "
-            f"pass={item.get('pass')} | evidence: {evidence}"
-        )
-    eval_text = "\n".join(eval_rows) if eval_rows else "- None"
+    inclusion_panel = cl.CustomElement(
+        name="InclusionResult",
+        props={
+            "request": user_request,
+            "jobPosting": result.rewritten_output,
+            "reviewers": result.review_panel,
+            "evalResult": result.rewritten_eval,
+        },
+    )
 
-    await cl.Message(
-        content=(
-            f"### Request\n{user_request}\n\n"
-            f"### Baseline inclusion score\n"
-            f"- **{result.baseline_eval['overall_score']}** "
-            f"(overall_pass={result.baseline_eval['overall_pass']})\n\n"
-            f"### Reviewer findings\n{findings_text}\n\n"
-            f"### LLM eval details\n{eval_text}\n\n"
-            "### Baseline job opening (verbatim)\n"
-            f"{result.baseline_output}\n\n"
-            f"### Feedback summary\n"
-            + ("\n".join(f"- {item}" for item in result.feedback_summary) if result.feedback_summary else "- None") +
-            "\n\n### Improved job opening\n"
-            f"{result.rewritten_output}"
-        )
-    ).send()
+    await cl.Message(content="", elements=[inclusion_panel]).send()
+

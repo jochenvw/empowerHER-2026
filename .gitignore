@@ -8,5 +8,7 @@ __pycache__/
 
 
 # Chainlit runtime artifacts
-.chainlit/
+.chainlit/*
+!.chainlit/config.toml
 .files/
+chainlit.md
