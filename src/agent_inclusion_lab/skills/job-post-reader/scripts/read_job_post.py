@@ -9,7 +9,7 @@ def main() -> int:
         raise RuntimeError("Usage: read_job_post.py <path>")
     path = Path(sys.argv[1])
     text = path.read_text(encoding="utf-8")
-    sys.stdout.write(text)
+    sys.stdout.buffer.write(text.encode("utf-8"))
     return 0
 
 
