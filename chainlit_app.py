@@ -53,12 +53,7 @@ async def on_chat_start() -> None:
         content=(
             "## empowerHER inclusion workflow\n\n"
             f"{runtime_info}\n\n"
-            "Ask for the job posting and the result renders in three columns:\n"
-            "- **left** — what each review agent reasoned (initially: *looks fine, continue as is*)\n"
-            "- **center** — the job posting the pipeline produced\n"
-            "- **right** — the inclusion eval score for that posting\n\n"
-            "As participants contribute reviewer and rewrite agents, more cards appear on the "
-            "left and the score on the right improves on the next request.\n\n"
+            "Ask for the job posting to see **reasoning · posting · eval score** side by side.\n\n"
             "Starter prompts:\n"
             f"{prompt_hints}"
         )
