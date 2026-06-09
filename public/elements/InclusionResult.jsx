@@ -18,9 +18,9 @@ export default function InclusionResult() {
   const jobPosting = props.jobPosting || "";
 
   return (
-    <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 mt-2">
+    <div className="w-full grid grid-cols-12 gap-4 mt-2">
       {/* LEFT: agent reasoning */}
-      <div className="lg:col-span-3 flex flex-col gap-2">
+      <div className="col-span-12 md:col-span-3 flex flex-col gap-2">
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           <MessageSquare className="h-4 w-4" /> Agent reasoning
         </div>
@@ -62,7 +62,7 @@ export default function InclusionResult() {
       </div>
 
       {/* CENTER: the job posting outcome */}
-      <div className="lg:col-span-6 flex flex-col gap-2">
+      <div className="col-span-12 md:col-span-6 flex flex-col gap-2">
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           <FileText className="h-4 w-4" /> Job posting
         </div>
@@ -72,7 +72,7 @@ export default function InclusionResult() {
       </div>
 
       {/* RIGHT: evaluation outcome */}
-      <div className="lg:col-span-3 flex flex-col gap-2">
+      <div className="col-span-12 md:col-span-3 flex flex-col gap-2">
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           <ClipboardCheck className="h-4 w-4" /> Inclusion evals
         </div>
