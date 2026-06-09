@@ -61,8 +61,10 @@ The system is a three-stage pipeline over a job-posting document:
 1. **draft** → 2. **review** → 3. **rewrite**, then **score baseline vs. rewritten**.
 
 `workflow.py` (`run_inclusion_workflow` / `run_inclusion_workflow_async`) is the single
-orchestration point. It threads a mutable `state: dict` through each stage, resolving the
-agent for each stage via `agents/registry.py`, then evaluates both baseline and rewritten
+orchestration point. It threads a mutable `state: dict` through each stage. The **draft** and
+**rewrite** stages resolve a single agent via `agents/registry.py`; the **review** stage
+fans out — by default it runs **every** discovered `stage="review"` plugin and collects one
+entry per reviewer into `result.review_panel`. It then evaluates both baseline and rewritten
 text with `evals/inclusion_eval.py`.
 
 - **Agent plugins** live one-per-folder under `src/agent_inclusion_lab/agents/<name>/` and
@@ -85,9 +87,19 @@ text with `evals/inclusion_eval.py`.
 - **Stage selection at runtime** via env vars: `INCLUSION_DRAFT_AGENT`,
   `INCLUSION_REVIEW_AGENT`, `INCLUSION_REWRITE_AGENT` pick an `agent_id`; otherwise the
   first-discovered plugin for that stage (by sorted module/folder name) is the default.
-  `resolve_agent` enforces that a requested agent's `stage` matches. When adding a variant,
-  name its folder so it sorts **after** the `main` default to keep the no-op default
-  (e.g. `rewrite_agent_llm` sorts after `rewrite_agent`).
+  Exception: when `INCLUSION_REVIEW_AGENT` is **unset**, the review stage runs **all**
+  review-stage plugins (fan-out) so each contributed reviewer adds its own panel entry;
+  setting it restricts the panel to that single reviewer. `resolve_agent` enforces that a
+  requested agent's `stage` matches. When adding a draft/rewrite variant, name its folder so
+  it sorts **after** the `main` default to keep the no-op default (e.g. `rewrite_agent_llm`
+  sorts after `rewrite_agent`). Review agents have no default-ordering constraint — adding a
+  reviewer folder simply adds it to the panel.
+- **Chainlit UI (`chainlit_app.py` + `public/elements/InclusionResult.jsx`)**: each turn
+  renders a single `cl.CustomElement` ("InclusionResult") laid out in three columns — **left**
+  = agent reasoning (one card per `review_panel` entry: summary, suggestions, evidence),
+  **center** = the job posting outcome (`rewritten_output`), **right** = the inclusion eval of
+  that output (`rewritten_eval`). The demo loop: contributing reviewer/rewrite agents adds
+  cards on the left and raises the score on the right when the posting is re-requested.
 - **Evaluation**: `inclusion_eval.py` defines bespoke checks as `EvalSpec`s and runs them
   through a native Agent Framework `InclusionJudgeEvaluator` (used with `af.evaluate_agent`,
   `af.EvalItem`, `af.EvalResults`). The judge is an LLM scoring 1–5 against penalize/reward

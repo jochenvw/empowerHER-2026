@@ -35,8 +35,17 @@ def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
                     "baseline_output": load_text(Path(state["job_post_path"])).strip()
                 }
             )
-        if stage == "review":
+        if stage == "rewrite":
             return SimpleNamespace(
+                runner=lambda state: {"rewritten_output": str(state["baseline_output"])}
+            )
+        raise AssertionError(f"Unexpected stage: {stage}")
+
+    def fake_discover():
+        return {
+            "reviewer.default": SimpleNamespace(
+                agent_id="reviewer.default",
+                stage="review",
                 runner=lambda _state: {
                     "review": {
                         "reviewer": "reviewer.default",
@@ -44,15 +53,12 @@ def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
                         "suggestions": [],
                         "evidence_spans": [],
                     }
-                }
+                },
             )
-        if stage == "rewrite":
-            return SimpleNamespace(
-                runner=lambda state: {"rewritten_output": str(state["baseline_output"])}
-            )
-        raise AssertionError(f"Unexpected stage: {stage}")
+        }
 
     monkeypatch.setattr(workflow, "resolve_agent", fake_resolve_agent)
+    monkeypatch.setattr(workflow, "discover_agent_plugins", fake_discover)
     monkeypatch.setattr(workflow, "evaluate_text_async", fake_eval_async)
 
     root = Path(__file__).resolve().parents[1]
@@ -64,6 +70,8 @@ def test_workflow_smoke_verbatim_baseline_flow(monkeypatch) -> None:
     assert result.baseline_output == legacy.strip()
     assert result.rewritten_output == result.baseline_output
     assert result.baseline_eval["overall_score"] == result.rewritten_eval["overall_score"]
+    assert len(result.review_panel) == 1
+    assert result.review_panel[0]["reviewer"] == "reviewer.default"
 
 
 def test_workflow_rewrite_plugin_improves_after_score(monkeypatch) -> None:
@@ -84,30 +92,54 @@ def test_workflow_rewrite_plugin_improves_after_score(monkeypatch) -> None:
             return SimpleNamespace(
                 runner=lambda _state: {"baseline_output": "A married gentleman is preferred."}
             )
-        if stage == "review":
-            return SimpleNamespace(
-                runner=lambda _state: {
-                    "review": {
-                        "reviewer": "reviewer.custom",
-                        "summary": "Remove gendered language.",
-                        "suggestions": ["Use neutral candidate framing."],
-                        "evidence_spans": ["married gentleman"],
-                    }
-                }
-            )
         if stage == "rewrite":
             return SimpleNamespace(
                 runner=lambda state: {
                     "rewritten_output": "We welcome all qualified candidates.",
                     "_review_seen": state.get("review", {}).get("summary"),
+                    "_panel_size": len(state.get("review_panel", [])),
                 }
             )
         raise AssertionError(f"Unexpected stage: {stage}")
 
+    def fake_discover():
+        return {
+            "reviewer.gender": SimpleNamespace(
+                agent_id="reviewer.gender",
+                stage="review",
+                runner=lambda _state: {
+                    "review": {
+                        "reviewer": "reviewer.gender",
+                        "summary": "Remove gendered language.",
+                        "suggestions": ["Use neutral candidate framing."],
+                        "evidence_spans": ["married gentleman"],
+                    }
+                },
+            ),
+            "reviewer.access": SimpleNamespace(
+                agent_id="reviewer.access",
+                stage="review",
+                runner=lambda _state: {
+                    "review": {
+                        "reviewer": "reviewer.access",
+                        "summary": "Marital status is not job-related.",
+                        "suggestions": ["Drop marital status preference."],
+                        "evidence_spans": ["married"],
+                    }
+                },
+            ),
+        }
+
     monkeypatch.setattr(workflow, "resolve_agent", fake_resolve_agent)
+    monkeypatch.setattr(workflow, "discover_agent_plugins", fake_discover)
     monkeypatch.setattr(workflow, "evaluate_text_async", fake_eval_async)
 
     result = run_inclusion_workflow("ignored.md", "principles")
     assert result.rewritten_output != result.baseline_output
     assert result.baseline_eval["overall_score"] < result.rewritten_eval["overall_score"]
     assert result.rewritten_eval["overall_pass"] is True
+    assert len(result.review_panel) == 2
+    assert {item["reviewer"] for item in result.review_panel} == {
+        "reviewer.gender",
+        "reviewer.access",
+    }
