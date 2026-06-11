@@ -7,7 +7,7 @@ body:
     id: agent_name
     attributes:
       label: Agent name
-      description: Name of the new agent or folder.
+      description: Name of the new agent.
     validations:
       required: true
   - type: textarea
@@ -17,18 +17,6 @@ body:
       description: One or two sentences on the agent's job.
     validations:
       required: true
-  - type: dropdown
-    id: stage
-    attributes:
-      label: Preferred stage (optional)
-      description: If you know it, pick the stage. Otherwise leave it at rewrite.
-      options:
-        - rewrite
-        - review
-        - draft
-      default: 0
-    validations:
-      required: false
   - type: textarea
     id: details
     attributes:
