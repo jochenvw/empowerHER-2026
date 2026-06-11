@@ -26,7 +26,7 @@ body:
         - rewrite
         - review
         - draft
-      default: rewrite
+      default: 0
     validations:
       required: false
   - type: textarea
