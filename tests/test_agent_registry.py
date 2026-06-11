@@ -5,6 +5,7 @@ def test_registry_discovers_default_stages() -> None:
     plugins = discover_agent_plugins()
     assert "baseline.default" in plugins
     assert "reviewer.default" in plugins
+    assert "reviewer.gender_eligibility" in plugins
     assert "rewrite.default" in plugins
 
     assert resolve_agent("draft").agent_id == "baseline.default"
