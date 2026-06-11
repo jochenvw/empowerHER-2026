@@ -13,37 +13,14 @@ body:
   - type: textarea
     id: responsibility
     attributes:
-      label: Responsibility
-      description: What this agent should do.
+      label: What should it do?
+      description: One or two sentences on the agent's job, and which stage (draft/review/rewrite) it plugs into.
     validations:
       required: true
   - type: textarea
-    id: input_context
+    id: details
     attributes:
-      label: Input context
-      description: What context or data the agent needs.
+      label: Anything else? (optional)
+      description: Input context, expected output, tools/skills, eval cases, or failure modes — only if you already know them.
     validations:
-      required: true
-  - type: textarea
-    id: expected_output
-    attributes:
-      label: Expected output
-      description: What the agent should return.
-    validations:
-      required: true
-  - type: textarea
-    id: tools_skills
-    attributes:
-      label: Tools or skills needed
-      description: Which helpers or skills are required.
-  - type: textarea
-    id: eval_cases
-    attributes:
-      label: Eval cases
-      description: Cases that should validate this agent.
-  - type: textarea
-    id: failure_modes
-    attributes:
-      label: Failure modes
-      description: Common or risky failure patterns to watch for.
-
+      required: false
