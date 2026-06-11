@@ -7,16 +7,28 @@ body:
     id: agent_name
     attributes:
       label: Agent name
-      description: Name of the new agent.
+      description: Name of the new agent or folder.
     validations:
       required: true
   - type: textarea
     id: responsibility
     attributes:
       label: What should it do?
-      description: One or two sentences on the agent's job, and which stage (draft/review/rewrite) it plugs into.
+      description: One or two sentences on the agent's job.
     validations:
       required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Preferred stage (optional)
+      description: If you know it, pick the stage. Otherwise leave it at rewrite.
+      options:
+        - rewrite
+        - review
+        - draft
+      default: rewrite
+    validations:
+      required: false
   - type: textarea
     id: details
     attributes:
@@ -31,5 +43,5 @@ body:
       description: Follow these to stay within the workshop conventions.
       options:
         - label: "Copy `src/agent_inclusion_lab/agents/rewrite_agent_llm/` as the template — it is the canonical example agent."
-        - label: "Put the new agent in its own folder `src/agent_inclusion_lab/agents/<name>/` exporting `AGENT_PLUGIN`; do not edit `workflow.py` or `registry.py`."
-        - label: "Make it opt-in via the matching `INCLUSION_*_AGENT` env var, and add a deterministic test."
+        - label: "Use the `agent-scaffolder` skill to create only `src/agent_inclusion_lab/agents/<name>/` plus a deterministic test."
+        - label: "Do not edit `workflow.py` or `registry.py`; rely on auto-discovery and `AGENT_PLUGIN`."
