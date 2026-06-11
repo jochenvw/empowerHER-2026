@@ -204,7 +204,23 @@ def _run_health() -> int:
     return 1
 
 
+def _print_ui_banner() -> None:
+    banner = r"""
+  ______                                        _   _ _____ ____
+ |  ____|                                      | | | | ____|  _ \
+ | |__   _ __ ___  _ __   _____      _____ _ __| |_| |  _| | |_) |
+ |  __| | '_ ` _ \| '_ \ / _ \ \ /\ / / _ \ '__|  _  | |___|  _ <
+ | |____| | | | | | |_) | (_) \ V  V /  __/ |  | | | |_____| | \ \
+ |______|_| |_| |_| .__/ \___/ \_/\_/ \___|_|  |_| |_|     |_|  \_\
+                   | |
+                   |_|        * * *  2 0 2 6  * * *
+"""
+    print(banner)
+    print("        EmpowerHER 2026 - Inclusion Lab Web UI\n")
+
+
 def _run_ui(host: str, port: str) -> int:
+    _print_ui_banner()
     root = _resolve_project_root()
     app_path = root / "chainlit_app.py"
     if not app_path.exists():
