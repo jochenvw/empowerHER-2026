@@ -37,6 +37,7 @@ Consider accommodations and avoid assumptions about physical ability.
     assert 'stage="review"' in init_text
     assert "inaccessible job-posting language" in prompt_text
     assert "workflow.py or registry.py" in prompt_text
+    assert "discover_agent_plugins()" in test_text
     assert "resolve_agent(stage=\"review\"" in test_text
 
 

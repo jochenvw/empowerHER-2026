@@ -177,10 +177,12 @@ def _render_system_prompt(*, spec: AgentIssueSpec, agent_id: str) -> str:
 def _render_test_module(*, agent_id: str, stage: AgentStage, agent_slug: str) -> str:
     return dedent(
         f'''\
-        from agent_inclusion_lab.agents.registry import resolve_agent
+        from agent_inclusion_lab.agents.registry import discover_agent_plugins, resolve_agent
 
 
         def test_{agent_slug}_plugin_is_discoverable() -> None:
+            plugins = discover_agent_plugins()
+            assert "{agent_id}" in plugins
             plugin = resolve_agent(stage="{stage}", requested_agent_id="{agent_id}")
             assert plugin.agent_id == "{agent_id}"
             assert plugin.stage == "{stage}"
